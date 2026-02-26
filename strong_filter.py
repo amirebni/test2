@@ -3,7 +3,6 @@ import random
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
-# ورودی از فایل زنده‌های Repo-5
 SUB_URL = "https://raw.githubusercontent.com/punez/Repo-5/main/alive.txt"
 OUTPUT_FILE = "strong_3000.txt"
 MAX_OUTPUT = 3000
@@ -17,7 +16,7 @@ def download():
         r.raise_for_status()
         return [l.strip() for l in r.text.splitlines() if l.strip()]
     except Exception as e:
-        log(f"خطا در دانلود: {e}")
+        log(f"خطا دانلود: {e}")
         return []
 
 def is_good_vless(line):
@@ -28,10 +27,12 @@ def is_good_vless(line):
         return False
 
     try:
-        u = urlparse(line.split("#")[0])
+        # جدا کردن remark
+        base = line.split("#")[0]
+        u = urlparse(base)
         qs = parse_qs(u.query)
 
-        # شرط‌های اصلی از نمونه‌ها
+        # شرط‌های ضروری (بر اساس نمونه‌های کاری)
         if qs.get("type", [""])[0] != "ws":
             return False
 
@@ -39,26 +40,36 @@ def is_good_vless(line):
             return False
 
         fp = qs.get("fp", [""])[0].lower()
-        if fp not in ["chrome", "firefox", "safari", "edge"]:
+        if fp not in ["chrome", "firefox", "safari"]:
             return False
 
-        # sni باید وجود داشته باشه (نمونه‌ها همه sni ایرانی داشتن)
-        sni = qs.get("sni", [""])[0].lower()
+        # sni باید وجود داشته باشه
+        sni = qs.get("sni", [""])[0]
         if not sni:
             return False
 
-        # پورت غیراستاندارد (نمونه‌ها 2087 و 8443 بودن)
+        # host هم باید باشه
+        host = qs.get("host", [""])[0]
+        if not host:
+            return False
+
+        # پورت بالا (مثل نمونه‌ها)
         port = u.port or 443
-        if port in [80, 443]:
-            return False  # پورت‌های استاندارد معمولاً فیلتر می‌شن
+        if port <= 1024:  # پورت‌های خیلی پایین معمولاً بد
+            return False
+
+        # اگر path خاص باشه (مثل /admin.php یا /download.php) امتیاز مثبت
+        path = qs.get("path", [""])[0]
+        if path and path != "/":
+            pass  # خوبه
 
         return True
 
-    except:
+    except Exception as e:
         return False
 
 def main():
-    log("فیلتر vless + ws + tls شروع شد")
+    log("فیلتر vless + ws + tls هدفمند شروع شد")
     lines = download()
     log(f"تعداد ورودی: {len(lines):,}")
 
