@@ -19,61 +19,60 @@ def download():
         log(f"خطا دانلود: {e}")
         return []
 
-def is_good_vless(line):
+def is_good_node(line):
     line_lower = line.lower()
 
-    # فقط vless
-    if not line.startswith("vless://"):
+    # حداقل پروتکل معتبر
+    if not any(p in line_lower for p in ["vless://", "vmess://", "trojan://"]):
         return False
 
     try:
-        # جدا کردن remark
         base = line.split("#")[0]
         u = urlparse(base)
         qs = parse_qs(u.query)
 
-        # شرط‌های ضروری (بر اساس نمونه‌های کاری)
-        if qs.get("type", [""])[0] != "ws":
-            return False
-
-        if qs.get("security", [""])[0] != "tls":
-            return False
-
-        fp = qs.get("fp", [""])[0].lower()
-        if fp not in ["chrome", "firefox", "safari"]:
-            return False
-
-        # sni باید وجود داشته باشه
-        sni = qs.get("sni", [""])[0]
-        if not sni:
-            return False
-
-        # host هم باید باشه
-        host = qs.get("host", [""])[0]
-        if not host:
-            return False
-
-        # پورت بالا (مثل نمونه‌ها)
+        # پورت غیراستاندارد (بر اساس نمونه‌ها)
         port = u.port or 443
-        if port <= 1024:  # پورت‌های خیلی پایین معمولاً بد
+        if port in [80, 443] or port <= 1024:
             return False
 
-        # اگر path خاص باشه (مثل /admin.php یا /download.php) امتیاز مثبت
-        path = qs.get("path", [""])[0]
-        if path and path != "/":
-            pass  # خوبه
+        # fp خوب (از نمونه‌ها)
+        fp = qs.get("fp", [""])[0].lower()
+        if fp and fp not in ["chrome", "firefox", "safari", "edge"]:
+            return False
+
+        # sni/host وجود داشته باشه (نمونه‌ها همه داشتن)
+        sni = qs.get("sni", [""])[0]
+        host = qs.get("host", [""])[0] or u.hostname or ""
+        if not sni and not host:
+            return False
+
+        # حذف دامنه‌های عمومی بلاک‌شده
+        if "google" in sni.lower() or "cloudflare.com" in sni.lower() or "microsoft" in sni.lower():
+            return False
+
+        # برای vless: ws + tls ترجیحاً
+        if line_lower.startswith("vless://"):
+            if qs.get("type", [""])[0] != "ws":
+                return False
+            if qs.get("security", [""])[0] != "tls":
+                return False
+
+        # برای vmess: tcp یا ws بدون tls هم قبول
+        if line_lower.startswith("vmess://"):
+            pass  # همه vmess رو نگه دار (نمونه خریدی بدون tls بود)
 
         return True
 
-    except Exception as e:
-        return False
+    except:
+        return True  # اگر parse نشد ولی لینک معتبر بود، نگه دار
 
 def main():
-    log("فیلتر vless + ws + tls هدفمند شروع شد")
+    log("فیلتر هدفمند بر اساس نمونه‌های کاری شروع شد")
     lines = download()
     log(f"تعداد ورودی: {len(lines):,}")
 
-    good = [line for line in lines if is_good_vless(line)]
+    good = [line for line in lines if is_good_node(line)]
 
     log(f"بعد فیلتر: {len(good):,} نود")
 
