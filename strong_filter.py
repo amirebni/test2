@@ -22,8 +22,8 @@ def download():
 def is_good_node(line):
     line_lower = line.lower()
 
-    # حداقل پروتکل معتبر
-    if not any(p in line_lower for p in ["vless://", "vmess://", "trojan://"]):
+    # حداقل پروتکل (vless یا vmess)
+    if not any(p in line_lower for p in ["vless://", "vmess://"]):
         return False
 
     try:
@@ -31,36 +31,27 @@ def is_good_node(line):
         u = urlparse(base)
         qs = parse_qs(u.query)
 
-        # پورت غیراستاندارد (بر اساس نمونه‌ها)
+        # پورت غیراستاندارد (بر اساس همه نمونه‌ها)
         port = u.port or 443
         if port in [80, 443] or port <= 1024:
             return False
 
-        # fp خوب (از نمونه‌ها)
-        fp = qs.get("fp", [""])[0].lower()
-        if fp and fp not in ["chrome", "firefox", "safari", "edge"]:
-            return False
-
-        # sni/host وجود داشته باشه (نمونه‌ها همه داشتن)
-        sni = qs.get("sni", [""])[0]
+        # host یا sni باید وجود داشته باشه (نمونه‌ها همه داشتن)
         host = qs.get("host", [""])[0] or u.hostname or ""
-        if not sni and not host:
+        sni = qs.get("sni", [""])[0]
+        if not host and not sni:
             return False
 
-        # حذف دامنه‌های عمومی بلاک‌شده
-        if "google" in sni.lower() or "cloudflare.com" in sni.lower() or "microsoft" in sni.lower():
+        # حذف دامنه‌های عمومی بلاک‌شده (اختیاری - فقط موارد خیلی واضح)
+        if "google" in sni.lower() or "cloudflare.com" in sni.lower():
             return False
 
-        # برای vless: ws + tls ترجیحاً
+        # برای vless: ws ترجیحاً (نمونه‌های vless همه ws بودن)
         if line_lower.startswith("vless://"):
             if qs.get("type", [""])[0] != "ws":
                 return False
-            if qs.get("security", [""])[0] != "tls":
-                return False
 
-        # برای vmess: tcp یا ws بدون tls هم قبول
-        if line_lower.startswith("vmess://"):
-            pass  # همه vmess رو نگه دار (نمونه خریدی بدون tls بود)
+        # برای vmess: همه رو قبول کن (نمونه خریدی tcp بود)
 
         return True
 
@@ -68,7 +59,7 @@ def is_good_node(line):
         return True  # اگر parse نشد ولی لینک معتبر بود، نگه دار
 
 def main():
-    log("فیلتر هدفمند بر اساس نمونه‌های کاری شروع شد")
+    log("فیلتر حداقل شرط‌ها شروع شد")
     lines = download()
     log(f"تعداد ورودی: {len(lines):,}")
 
