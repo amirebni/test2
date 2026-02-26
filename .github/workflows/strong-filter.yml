@@ -2,7 +2,7 @@ name: Strong Filter & Clean
 
 on:
   schedule:
-    - cron: '45 7 * * *'           # 07:45 UTC ≈ ۱۱:۱۵ صبح ایران
+    - cron: '45 7 * * *'           # 07:45 UTC ≈ ۱۱:۱۵ ایران
 
   workflow_dispatch:
 
